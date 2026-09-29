@@ -1,4 +1,4 @@
-"""터미널에서 도시의 현재 날씨와 오늘 예보를 보여 주는 프로그램."""
+"""터미널에서 도시의 현재 날씨와 3일 예보를 보여 주는 프로그램."""
 
 from __future__ import annotations
 
@@ -44,6 +44,8 @@ WEATHER_CODES = {
     99: "강한 우박을 동반한 뇌우",
 }
 
+WEEKDAYS = ("월", "화", "수", "목", "금", "토", "일")
+
 
 def get_json(url: str, params: dict[str, str | float]) -> dict:
     """공개 API에서 JSON 응답을 받아온다."""
@@ -73,7 +75,7 @@ def get_weather(latitude: float, longitude: float) -> dict:
             "current": "temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m",
             "daily": "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max",
             "timezone": "auto",
-            "forecast_days": "1",
+            "forecast_days": "3",
         },
     )
 
@@ -85,7 +87,6 @@ def print_weather(city_info: dict, weather: dict) -> None:
     country = city_info.get("country", "")
     timestamp = datetime.fromisoformat(current["time"])
     condition = WEATHER_CODES.get(current["weather_code"], "알 수 없음")
-    today_condition = WEATHER_CODES.get(daily["weather_code"][0], "알 수 없음")
 
     print("\n" + "=" * 42)
     print(f"  {city_name} ({country}) 날씨")
@@ -98,9 +99,17 @@ def print_weather(city_info: dict, weather: dict) -> None:
     print(f"  강수량    : {current['precipitation']:.1f} mm")
     print(f"  풍속      : {current['wind_speed_10m']:.1f} km/h")
     print("-" * 42)
-    print(f"  오늘 예보 : {today_condition}")
-    print(f"  최저/최고 : {daily['temperature_2m_min'][0]:.1f}°C / {daily['temperature_2m_max'][0]:.1f}°C")
-    print(f"  최대 강수확률: {daily['precipitation_probability_max'][0]}%")
+    print("  3일 예보")
+    for index, date_text in enumerate(daily["time"]):
+        date = datetime.fromisoformat(date_text)
+        day_name = "오늘" if index == 0 else "내일" if index == 1 else "모레"
+        condition = WEATHER_CODES.get(daily["weather_code"][index], "알 수 없음")
+        low = daily["temperature_2m_min"][index]
+        high = daily["temperature_2m_max"][index]
+        rain_chance = daily["precipitation_probability_max"][index]
+
+        print(f"  {day_name} ({date:%m/%d} {WEEKDAYS[date.weekday()]}): {condition}")
+        print(f"    최저/최고 {low:.1f}°C / {high:.1f}°C | 강수확률 {rain_chance}%")
     print("=" * 42)
 
 
