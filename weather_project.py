@@ -46,6 +46,41 @@ WEATHER_CODES = {
 
 WEEKDAYS = ("월", "화", "수", "목", "금", "토", "일")
 
+# Open-Meteo 위치 검색은 일부 한글 도시명을 찾지 못할 수 있어 영문 검색어로 바꾼다.
+KOREAN_CITY_NAMES = {
+    "서울": "Seoul",
+    "서울특별시": "Seoul",
+    "부산": "Busan",
+    "부산광역시": "Busan",
+    "대구": "Daegu",
+    "대구광역시": "Daegu",
+    "인천": "Incheon",
+    "인천광역시": "Incheon",
+    "광주": "Gwangju",
+    "광주광역시": "Gwangju",
+    "대전": "Daejeon",
+    "대전광역시": "Daejeon",
+    "울산": "Ulsan",
+    "울산광역시": "Ulsan",
+    "세종": "Sejong",
+    "세종특별자치시": "Sejong",
+    "수원": "Suwon",
+    "성남": "Seongnam",
+    "고양": "Goyang",
+    "용인": "Yongin",
+    "춘천": "Chuncheon",
+    "강릉": "Gangneung",
+    "청주": "Cheongju",
+    "천안": "Cheonan",
+    "전주": "Jeonju",
+    "목포": "Mokpo",
+    "포항": "Pohang",
+    "창원": "Changwon",
+    "제주": "Jeju City",
+    "제주시": "Jeju City",
+    "서귀포": "Seogwipo",
+}
+
 
 def get_json(url: str, params: dict[str, str | float]) -> dict:
     """공개 API에서 JSON 응답을 받아온다."""
@@ -58,9 +93,16 @@ def get_json(url: str, params: dict[str, str | float]) -> dict:
 
 
 def find_city(city: str) -> dict | None:
+    search_name = KOREAN_CITY_NAMES.get(city, city)
     data = get_json(
         GEOCODING_URL,
-        {"name": city, "count": "1", "language": "ko", "format": "json"},
+        {
+            "name": search_name,
+            "count": "1",
+            "language": "ko",
+            "format": "json",
+            "countryCode": "KR",
+        },
     )
     results = data.get("results", [])
     return results[0] if results else None
@@ -84,12 +126,11 @@ def print_weather(city_info: dict, weather: dict) -> None:
     current = weather["current"]
     daily = weather["daily"]
     city_name = city_info["name"]
-    country = city_info.get("country", "")
     timestamp = datetime.fromisoformat(current["time"])
     condition = WEATHER_CODES.get(current["weather_code"], "알 수 없음")
 
     print("\n" + "=" * 42)
-    print(f"  {city_name} ({country}) 날씨")
+    print(f"  {city_name} (대한민국) 날씨")
     print("=" * 42)
     print(f"  기준 시각 : {timestamp:%Y-%m-%d %H:%M}")
     print(f"  현재 날씨 : {condition}")
@@ -118,7 +159,7 @@ def main() -> None:
     print("종료하려면 q를 입력하세요.")
 
     while True:
-        city = input("\n도시 이름을 입력하세요 (예: 서울, Busan): ").strip()
+        city = input("\n대한민국 도시 이름을 입력하세요 (예: 서울, 부산): ").strip()
         if city.lower() in {"q", "quit", "exit", "종료"}:
             print("날씨 프로그램을 종료합니다.")
             return
