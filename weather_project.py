@@ -82,6 +82,33 @@ KOREAN_CITY_NAMES = {
 }
 
 
+def get_weather_emoji(weather_code: int) -> str:
+    """WMO 날씨 코드에 맞는 이모지를 돌려준다."""
+    if weather_code == 0:
+        return "☀️"
+    if weather_code == 1:
+        return "🌤️"
+    if weather_code == 2:
+        return "⛅"
+    if weather_code == 3:
+        return "☁️"
+    if weather_code in {45, 48}:
+        return "🌫️"
+    if weather_code in {51, 53, 55, 56, 57}:
+        return "🌦️"
+    if weather_code in {61, 63, 65, 66, 67, 80, 81, 82}:
+        return "🌧️"
+    if weather_code in {71, 73, 75, 77}:
+        return "❄️"
+    if weather_code in {85, 86}:
+        return "🌨️"
+    if weather_code == 95:
+        return "🌩️"
+    if weather_code in {96, 99}:
+        return "⛈️"
+    return "🌡️"
+
+
 def get_json(url: str, params: dict[str, str | float]) -> dict:
     """공개 API에서 JSON 응답을 받아온다."""
     request = Request(
@@ -128,12 +155,13 @@ def print_weather(city_info: dict, weather: dict) -> None:
     city_name = city_info["name"]
     timestamp = datetime.fromisoformat(current["time"])
     condition = WEATHER_CODES.get(current["weather_code"], "알 수 없음")
+    current_emoji = get_weather_emoji(current["weather_code"])
 
     print("\n" + "=" * 42)
     print(f"  {city_name} (대한민국) 날씨")
     print("=" * 42)
     print(f"  기준 시각 : {timestamp:%Y-%m-%d %H:%M}")
-    print(f"  현재 날씨 : {condition}")
+    print(f"  현재 날씨 : {current_emoji} {condition}")
     print(f"  현재 기온 : {current['temperature_2m']:.1f}°C")
     print(f"  체감 기온 : {current['apparent_temperature']:.1f}°C")
     print(f"  습도      : {current['relative_humidity_2m']}%")
@@ -144,12 +172,14 @@ def print_weather(city_info: dict, weather: dict) -> None:
     for index, date_text in enumerate(daily["time"]):
         date = datetime.fromisoformat(date_text)
         day_name = "오늘" if index == 0 else "내일" if index == 1 else "모레"
-        condition = WEATHER_CODES.get(daily["weather_code"][index], "알 수 없음")
+        weather_code = daily["weather_code"][index]
+        condition = WEATHER_CODES.get(weather_code, "알 수 없음")
+        emoji = get_weather_emoji(weather_code)
         low = daily["temperature_2m_min"][index]
         high = daily["temperature_2m_max"][index]
         rain_chance = daily["precipitation_probability_max"][index]
 
-        print(f"  {day_name} ({date:%m/%d} {WEEKDAYS[date.weekday()]}): {condition}")
+        print(f"  {day_name} ({date:%m/%d} {WEEKDAYS[date.weekday()]}): {emoji} {condition}")
         print(f"    최저/최고 {low:.1f}°C / {high:.1f}°C | 강수확률 {rain_chance}%")
     print("=" * 42)
 
