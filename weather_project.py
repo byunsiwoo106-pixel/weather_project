@@ -142,7 +142,8 @@ def get_weather(latitude: float, longitude: float) -> dict:
             "latitude": latitude,
             "longitude": longitude,
             "current": "temperature_2m,apparent_temperature,relative_humidity_2m,precipitation,weather_code,wind_speed_10m",
-            "daily": "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max",
+            "daily": "weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum,wind_speed_10m_max,uv_index_max,sunrise,sunset",
+            "hourly": "temperature_2m,weather_code,precipitation_probability",
             "timezone": "auto",
             "forecast_days": "3",
         },
@@ -152,14 +153,25 @@ def get_weather(latitude: float, longitude: float) -> dict:
 def print_weather(city_info: dict, weather: dict) -> None:
     current = weather["current"]
     daily = weather["daily"]
+    hourly = weather["hourly"]
     city_name = city_info["name"]
     timestamp = datetime.fromisoformat(current["time"])
     condition = WEATHER_CODES.get(current["weather_code"], "알 수 없음")
     current_emoji = get_weather_emoji(current["weather_code"])
 
-    print("\n" + "=" * 42)
+    hourly_by_time = {
+        time: (temperature, weather_code, rain_chance)
+        for time, temperature, weather_code, rain_chance in zip(
+            hourly["time"],
+            hourly["temperature_2m"],
+            hourly["weather_code"],
+            hourly["precipitation_probability"],
+        )
+    }
+
+    print("\n" + "=" * 58)
     print(f"  {city_name} (대한민국) 날씨")
-    print("=" * 42)
+    print("=" * 58)
     print(f"  기준 시각 : {timestamp:%Y-%m-%d %H:%M}")
     print(f"  현재 날씨 : {current_emoji} {condition}")
     print(f"  현재 기온 : {current['temperature_2m']:.1f}°C")
@@ -167,8 +179,8 @@ def print_weather(city_info: dict, weather: dict) -> None:
     print(f"  습도      : {current['relative_humidity_2m']}%")
     print(f"  강수량    : {current['precipitation']:.1f} mm")
     print(f"  풍속      : {current['wind_speed_10m']:.1f} km/h")
-    print("-" * 42)
-    print("  3일 예보")
+    print("-" * 58)
+    print("  상세 3일 예보")
     for index, date_text in enumerate(daily["time"]):
         date = datetime.fromisoformat(date_text)
         day_name = "오늘" if index == 0 else "내일" if index == 1 else "모레"
@@ -178,10 +190,30 @@ def print_weather(city_info: dict, weather: dict) -> None:
         low = daily["temperature_2m_min"][index]
         high = daily["temperature_2m_max"][index]
         rain_chance = daily["precipitation_probability_max"][index]
+        rain_sum = daily["precipitation_sum"][index]
+        max_wind = daily["wind_speed_10m_max"][index]
+        max_uv = daily["uv_index_max"][index]
+        sunrise = datetime.fromisoformat(daily["sunrise"][index])
+        sunset = datetime.fromisoformat(daily["sunset"][index])
 
         print(f"  {day_name} ({date:%m/%d} {WEEKDAYS[date.weekday()]}): {emoji} {condition}")
         print(f"    최저/최고 {low:.1f}°C / {high:.1f}°C | 강수확률 {rain_chance}%")
-    print("=" * 42)
+        print(f"    예상 강수량 {rain_sum:.1f} mm | 최대 풍속 {max_wind:.1f} km/h | 최대 UV {max_uv:.1f}")
+        print(f"    일출 {sunrise:%H:%M} | 일몰 {sunset:%H:%M}")
+
+        for label, hour in (("오전", 9), ("오후", 15), ("밤", 21)):
+            period = hourly_by_time.get(f"{date_text}T{hour:02d}:00")
+            if period is None:
+                continue
+            period_temp, period_code, period_rain_chance = period
+            period_condition = WEATHER_CODES.get(period_code, "알 수 없음")
+            period_emoji = get_weather_emoji(period_code)
+            print(
+                f"    {label} {hour:02d}시: {period_emoji} {period_condition}, "
+                f"{period_temp:.1f}°C, 강수확률 {period_rain_chance}%"
+            )
+        print("-" * 58)
+    print("=" * 58)
 
 
 def main() -> None:
